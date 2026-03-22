@@ -106,7 +106,10 @@
       "vidu_step1": "进入生数科技 Vidu 平台，点击「新建 API Key」",
       "openai_compatible_step1": "填写任意 OpenAI 协议兼容服务的 Base URL 与 API Key",
       "gemini_compatible_step1": "填写任意 Gemini 协议兼容服务的 Base URL 与 API Key",
-      "qwen_step1": "进入阿里云百炼平台，获取 API Key"
+      "qwen_step1": "进入阿里云百炼平台，获取 API Key",
+      "bedrock_step1": "前往 AWS IAM 控制台创建访问密钥，将 Access Key ID、Secret Access Key 和区域以 JSON 格式填入 API Key 输入框：{\"accessKeyId\":\"...\",\"secretAccessKey\":\"...\",\"region\":\"us-east-1\"}",
+      "bedrock_step2": "前往 AWS Bedrock 控制台，在您的区域启用 Claude 模型访问权限",
+      "bedrock_step3": "如使用 CosyVoice 语音合成，可在 JSON 中添加 sagemakerRegion 和 sagemakerEndpoint 字段指定 SageMaker 端点"
     }
   }
 }

@@ -961,5 +961,19 @@
         "supportGenerateAudio": false
       }
     }
+  },
+  {
+    "modelType": "llm",
+    "provider": "bedrock",
+    "modelId": "us.anthropic.claude-sonnet-4-6",
+    "capabilities": {
+      "llm": {
+        "reasoningEffortOptions": [
+          "low",
+          "medium",
+          "high"
+        ]
+      }
+    }
   }
 ]

@@ -172,6 +172,64 @@ export async function chatCompletionWithVision(
         return completion
       }
 
+      if (providerKey === 'bedrock') {
+        const config = await getProviderConfig(userId, provider)
+        const { parseBedrockCredentials, createBedrockProvider } = await import('./providers/bedrock')
+        const { imageUrlToBase64 } = await import('../cos')
+        const { generateText } = await import('ai')
+        const credentials = parseBedrockCredentials(config.apiKey)
+        const bedrockProvider = createBedrockProvider(credentials)
+
+        const contentParts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType?: string }> = []
+        for (const url of imageUrls) {
+          try {
+            const dataUrl = url.startsWith('data:') ? url : await imageUrlToBase64(url)
+            const base64Start = dataUrl.indexOf(';base64,')
+            if (base64Start !== -1) {
+              const mimeType = dataUrl.substring(5, base64Start)
+              const data = dataUrl.substring(base64Start + 8)
+              contentParts.push({ type: 'image', image: data, mimeType })
+            }
+          } catch (e) {
+            _ulogError('[LLM Vision] Bedrock 图片转换失败:', e)
+          }
+        }
+        if (textPrompt) {
+          contentParts.push({ type: 'text', text: textPrompt })
+        }
+
+        const aiSdkResult = await generateText({
+          model: bedrockProvider(resolvedModelId),
+          messages: [{ role: 'user', content: contentParts }],
+          temperature,
+          maxRetries,
+        })
+
+        const usage = aiSdkResult.usage || aiSdkResult.totalUsage
+        llmLogger.info({
+          action: 'llm.vision.success',
+          message: 'llm vision call succeeded',
+          provider: 'bedrock',
+          durationMs: Date.now() - attemptStartedAt,
+          details: {
+            model: resolvedModelId,
+            attempt,
+            maxRetries,
+            imageCount: imageUrls.length,
+          },
+        })
+        const completion = buildOpenAIChatCompletion(
+          resolvedModelId,
+          aiSdkResult.text || '',
+          {
+            promptTokens: usage?.inputTokens ?? 0,
+            completionTokens: usage?.outputTokens ?? 0,
+          },
+        )
+        recordCompletionUsage(resolvedModelId, completion)
+        return completion
+      }
+
       const config = await getProviderConfig(userId, provider)
       if (!config.baseUrl) {
         throw new Error(`PROVIDER_BASE_URL_MISSING: ${provider} (llm)`)

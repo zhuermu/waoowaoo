@@ -225,6 +225,66 @@ export async function chatCompletion(
         return completion
       }
 
+      if (providerKey === 'bedrock') {
+        const config = await getProviderConfig(userId, provider)
+        const { parseBedrockCredentials, createBedrockProvider, mapBedrockReasoningBudget } = await import('./providers/bedrock')
+        const credentials = parseBedrockCredentials(config.apiKey)
+        const bedrockProvider = createBedrockProvider(credentials)
+
+        const budgetTokens = reasoning ? mapBedrockReasoningBudget(reasoningEffort) : null
+        const bedrockProviderOptions = budgetTokens
+          ? { bedrock: { reasoning: { budgetTokens } } }
+          : undefined
+        const generateParams: Parameters<typeof generateText>[0] = {
+          model: bedrockProvider(resolvedModelId),
+          system: getSystemPrompt(messages),
+          messages: getConversationMessages(messages) as ModelMessage[],
+          ...(budgetTokens ? {} : { temperature }),
+          maxRetries,
+          ...(bedrockProviderOptions ? { providerOptions: bedrockProviderOptions } : {}),
+        }
+        const aiSdkResult = await generateText(generateParams)
+
+        const usage = aiSdkResult.usage || aiSdkResult.totalUsage
+        const completion = buildOpenAIChatCompletion(
+          resolvedModelId,
+          buildReasoningAwareContent(aiSdkResult.text || '', aiSdkResult.reasoningText || ''),
+          {
+            promptTokens: usage?.inputTokens ?? 0,
+            completionTokens: usage?.outputTokens ?? 0,
+          },
+        )
+        logLlmRawOutput({
+          userId,
+          projectId,
+          provider: 'bedrock',
+          modelId: resolvedModelId,
+          modelKey: selection.modelKey,
+          stream: false,
+          action: options.action,
+          text: aiSdkResult.text || '',
+          reasoning: aiSdkResult.reasoningText || '',
+          usage: {
+            promptTokens: usage?.inputTokens ?? 0,
+            completionTokens: usage?.outputTokens ?? 0,
+          },
+        })
+        recordCompletionUsage(resolvedModelId, completion)
+        llmLogger.info({
+          action: 'llm.call.success',
+          message: 'llm call succeeded',
+          provider: 'bedrock',
+          durationMs: Date.now() - attemptStartedAt,
+          details: {
+            model: resolvedModelId,
+            attempt,
+            maxRetries,
+            engine: 'ai_sdk_bedrock',
+          },
+        })
+        return completion
+      }
+
       const config = await getProviderConfig(userId, provider)
       if (!config.baseUrl) {
         throw new Error(`PROVIDER_BASE_URL_MISSING: ${provider} (llm)`)

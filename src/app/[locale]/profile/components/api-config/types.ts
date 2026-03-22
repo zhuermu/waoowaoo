@@ -91,6 +91,8 @@ export const PRESET_MODELS: PresetModel[] = [
     { modelId: 'doubao-seed-2-0-mini-260215', name: 'Doubao Seed 2.0 Mini', type: 'llm', provider: 'ark' },
     { modelId: 'doubao-seed-1-6-251015', name: 'Doubao Seed 1.6', type: 'llm', provider: 'ark' },
     { modelId: 'doubao-seed-1-6-lite-251015', name: 'Doubao Seed 1.6 Lite', type: 'llm', provider: 'ark' },
+    // AWS Bedrock Claude
+    { modelId: 'us.anthropic.claude-sonnet-4-6', name: 'Claude Sonnet 4.6', type: 'llm', provider: 'bedrock' },
 
     // 图像模型
     { modelId: 'banana', name: 'Banana Pro', type: 'image', provider: 'fal' },
@@ -125,6 +127,7 @@ export const PRESET_MODELS: PresetModel[] = [
 
     // 音频模型
     { modelId: 'fal-ai/index-tts-2/text-to-speech', name: 'IndexTTS 2', type: 'audio', provider: 'fal' },
+    { modelId: 'cosyvoice-3.0', name: 'CosyVoice 3.0', type: 'audio', provider: 'bedrock' },
     // 口型同步模型
     { modelId: 'fal-ai/kling-video/lipsync/audio-to-video', name: 'Kling Lip Sync', type: 'lipsync', provider: 'fal' },
     { modelId: 'vidu-lipsync', name: 'Vidu Lip Sync', type: 'lipsync', provider: 'vidu' },
@@ -167,6 +170,7 @@ export const PRESET_PROVIDERS: Omit<Provider, 'apiKey' | 'hasApiKey'>[] = [
     { id: 'vidu', name: 'Vidu' },
     { id: 'fal', name: 'FAL' },
     { id: 'qwen', name: 'Qwen' },
+    { id: 'bedrock', name: 'AWS Bedrock' },
 ]
 
 const ZH_PROVIDER_NAME_MAP: Record<string, string> = {
@@ -338,6 +342,22 @@ export const PROVIDER_TUTORIALS: ProviderTutorial[] = [
             {
                 text: 'qwen_step1',
                 url: 'https://bailian.console.aliyun.com/cn-beijing/?tab=model#/api-key'
+            }
+        ]
+    },
+    {
+        providerId: 'bedrock',
+        steps: [
+            {
+                text: 'bedrock_step1',
+                url: 'https://console.aws.amazon.com/iam/home#/security_credentials'
+            },
+            {
+                text: 'bedrock_step2',
+                url: 'https://console.aws.amazon.com/bedrock/home#/modelaccess'
+            },
+            {
+                text: 'bedrock_step3'
             }
         ]
     }

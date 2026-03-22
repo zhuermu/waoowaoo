@@ -326,6 +326,158 @@ export async function chatCompletionStream(
       return completion
     }
 
+    if (providerKey === 'bedrock') {
+      const config = await getProviderConfig(userId, provider)
+      const { parseBedrockCredentials, createBedrockProvider, mapBedrockReasoningBudget } = await import('./providers/bedrock')
+      const credentials = parseBedrockCredentials(config.apiKey)
+      const bedrockProvider = createBedrockProvider(credentials)
+
+      const useReasoning = options.reasoning ?? true
+      const budgetTokens = useReasoning ? mapBedrockReasoningBudget(options.reasoningEffort || 'high') : null
+      const bedrockProviderOptions = budgetTokens
+        ? { bedrock: { reasoning: { budgetTokens } } }
+        : undefined
+      const aiStreamResult = streamText({
+        model: bedrockProvider(resolvedModelId),
+        system: getSystemPrompt(messages),
+        messages: getConversationMessages(messages),
+        ...(budgetTokens ? {} : { temperature: options.temperature ?? 0.7 }),
+        maxRetries: options.maxRetries ?? 2,
+        ...(bedrockProviderOptions ? { providerOptions: bedrockProviderOptions } : {}),
+      })
+
+      emitStreamStage(callbacks, streamStep, 'streaming', 'bedrock')
+      let text = ''
+      let reasoning = ''
+      let seq = 1
+      const chunkTypeCounts: Record<string, number> = {}
+      const streamErrors: unknown[] = []
+      try {
+        for await (const chunk of withStreamChunkTimeout(aiStreamResult.fullStream as AsyncIterable<AISdkStreamChunk>)) {
+          const chunkType = chunk?.type || 'unknown'
+          chunkTypeCounts[chunkType] = (chunkTypeCounts[chunkType] || 0) + 1
+          if (chunkType === 'reasoning-delta' && typeof chunk.text === 'string' && chunk.text) {
+            reasoning += chunk.text
+            emitStreamChunk(callbacks, streamStep, {
+              kind: 'reasoning',
+              delta: chunk.text,
+              seq,
+              lane: 'reasoning',
+            })
+            seq += 1
+          }
+          if (chunkType === 'text-delta' && typeof chunk.text === 'string' && chunk.text) {
+            text += chunk.text
+            emitStreamChunk(callbacks, streamStep, {
+              kind: 'text',
+              delta: chunk.text,
+              seq,
+              lane: 'main',
+            })
+            seq += 1
+          }
+          if (chunkType === 'error') {
+            streamErrors.push((chunk as Record<string, unknown>).error ?? chunk)
+          }
+        }
+      } catch (streamErr) {
+        llmLogger.error({
+          action: 'llm.stream.bedrock_stream_error',
+          message: `[LLM] Bedrock stream iteration error: ${streamErr instanceof Error ? streamErr.message : String(streamErr)}`,
+          provider: 'bedrock',
+          details: {
+            model: resolvedModelId,
+            chunkTypeCounts,
+            streamErrors,
+            textLength: text.length,
+            reasoningLength: reasoning.length,
+          },
+        })
+        if (!text) throw streamErr
+      }
+
+      // Reconcile final text from AI SDK resolved promises
+      let finalText = text
+      let finalReasoning = reasoning
+      try {
+        const resolvedReasoning = await aiStreamResult.reasoningText
+        if (resolvedReasoning && resolvedReasoning !== finalReasoning) {
+          const delta = resolvedReasoning.startsWith(finalReasoning)
+            ? resolvedReasoning.slice(finalReasoning.length)
+            : resolvedReasoning
+          if (delta) {
+            emitStreamChunk(callbacks, streamStep, { kind: 'reasoning', delta, seq, lane: 'reasoning' })
+            seq += 1
+          }
+          finalReasoning = resolvedReasoning
+        }
+      } catch { /* ignore */ }
+      try {
+        const resolvedText = await aiStreamResult.text
+        if (resolvedText && resolvedText !== finalText) {
+          const delta = resolvedText.startsWith(finalText)
+            ? resolvedText.slice(finalText.length)
+            : resolvedText
+          if (delta) {
+            emitStreamChunk(callbacks, streamStep, { kind: 'text', delta, seq, lane: 'main' })
+            seq += 1
+          }
+          finalText = resolvedText
+        }
+      } catch { /* ignore */ }
+
+      const usage = await Promise.resolve(aiStreamResult.usage).catch(() => null)
+
+      if (!finalText) {
+        llmLogger.error({
+          action: 'llm.stream.bedrock_empty',
+          message: `[LLM] Bedrock stream returned empty content`,
+          provider: 'bedrock',
+          details: {
+            model: resolvedModelId,
+            chunkTypeCounts,
+            streamErrors,
+            reasoningLength: finalReasoning.length,
+            budgetTokens,
+            useReasoning,
+          },
+        })
+        throw new Error(
+          `LLM_EMPTY_RESPONSE: bedrock::${resolvedModelId} 返回空内容` +
+          ` [chunks: ${JSON.stringify(chunkTypeCounts)}]` +
+          (streamErrors.length > 0 ? ` [errors: ${JSON.stringify(streamErrors[0])}]` : ''),
+        )
+      }
+
+      const completion = buildOpenAIChatCompletion(
+        resolvedModelId,
+        buildReasoningAwareContent(finalText, finalReasoning),
+        {
+          promptTokens: usage?.inputTokens ?? 0,
+          completionTokens: usage?.outputTokens ?? 0,
+        },
+      )
+      logLlmRawOutput({
+        userId,
+        projectId,
+        provider: 'bedrock',
+        modelId: resolvedModelId,
+        modelKey: selection.modelKey,
+        stream: true,
+        action: options.action,
+        text: finalText,
+        reasoning: finalReasoning,
+        usage: {
+          promptTokens: usage?.inputTokens ?? 0,
+          completionTokens: usage?.outputTokens ?? 0,
+        },
+      })
+      recordCompletionUsage(resolvedModelId, completion)
+      emitStreamStage(callbacks, streamStep, 'completed', 'bedrock')
+      callbacks?.onComplete?.(finalText, streamStep)
+      return completion
+    }
+
     if (providerKey !== 'ark') {
       const config = await getProviderConfig(userId, provider)
       if (!config.baseUrl) {

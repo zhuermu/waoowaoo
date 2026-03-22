@@ -106,7 +106,10 @@
       "vidu_step1": "Go to the Vidu platform and click 'Create API Key'",
       "openai_compatible_step1": "Enter any OpenAI-compatible service Base URL and API key",
       "gemini_compatible_step1": "Enter any Gemini-compatible service Base URL and API key",
-      "qwen_step1": "Go to Alibaba Cloud Bailian platform and get an API Key"
+      "qwen_step1": "Go to Alibaba Cloud Bailian platform and get an API Key",
+      "bedrock_step1": "Go to AWS IAM Console to create an Access Key, then paste as API Key in JSON format: {\"accessKeyId\":\"...\",\"secretAccessKey\":\"...\",\"region\":\"us-east-1\"}",
+      "bedrock_step2": "Go to AWS Bedrock Console and enable Claude model access in your region",
+      "bedrock_step3": "For CosyVoice TTS, optionally add sagemakerRegion and sagemakerEndpoint fields in the JSON to specify your SageMaker endpoint"
     }
   }
 }

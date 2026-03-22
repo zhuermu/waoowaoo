@@ -201,19 +201,30 @@ export async function generateVoiceLine(params: {
   }
   const audioSelection = await resolveModelSelectionOrSingle(params.userId, params.audioModel, 'audio')
   const providerKey = getProviderKey(audioSelection.provider).toLowerCase()
-  if (providerKey !== 'fal') {
+
+  let generated: { audioData: Buffer; audioDuration: number }
+
+  if (providerKey === 'fal') {
+    const falApiKey = await getAudioApiKey(params.userId, audioSelection.modelKey)
+    generated = await generateVoiceWithIndexTTS2({
+      endpoint: audioSelection.modelId,
+      referenceAudioUrl: fullAudioUrl,
+      text,
+      emotionPrompt: line.emotionPrompt,
+      strength: line.emotionStrength ?? 0.4,
+      falApiKey,
+    })
+  } else if (providerKey === 'bedrock') {
+    const { generateVoiceWithCosyVoice } = await import('@/lib/voice/providers/cosyvoice')
+    const apiKey = await getAudioApiKey(params.userId, audioSelection.modelKey)
+    generated = await generateVoiceWithCosyVoice({
+      referenceAudioUrl: fullAudioUrl,
+      text,
+      apiKey,
+    })
+  } else {
     throw new Error(`AUDIO_PROVIDER_UNSUPPORTED: ${audioSelection.provider}`)
   }
-  const falApiKey = await getAudioApiKey(params.userId, audioSelection.modelKey)
-
-  const generated = await generateVoiceWithIndexTTS2({
-    endpoint: audioSelection.modelId,
-    referenceAudioUrl: fullAudioUrl,
-    text,
-    emotionPrompt: line.emotionPrompt,
-    strength: line.emotionStrength ?? 0.4,
-    falApiKey,
-  })
 
   const audioKey = `voice/${params.projectId}/${episodeId}/${line.id}.wav`
   const cosKey = await uploadToCOS(generated.audioData, audioKey)
