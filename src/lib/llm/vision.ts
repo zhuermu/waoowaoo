@@ -191,7 +191,7 @@ export async function chatCompletionWithVision(
               contentParts.push({ type: 'image', image: data, mimeType })
             }
           } catch (e) {
-            _ulogError('[LLM Vision] Bedrock 图片转换失败:', e)
+            _ulogError('[LLM Vision] Bedrock image conversion failed:', e)
           }
         }
         if (textPrompt) {

@@ -43,10 +43,10 @@ function readText(value: unknown): string {
 const MAX_SPLIT_BOUNDARY_ATTEMPTS = 3
 const CLIP_BOUNDARY_SUFFIX = `
 
-[边界约束 / Boundary Constraints]
-1. start 和 end 必须从原文中【逐字复制】，不得改写、概括或缩写。The "start" and "end" anchors must be verbatim copies from the original text.
-2. 允许标点和空格差异，但关键实体、事件的文字必须与原文一模一样。Allow punctuation/whitespace differences, but key entities and events must match the original exactly.
-3. 如果无法从原文中找到可靠的锚点文本，直接返回 []。If anchors cannot be located reliably, return [] directly.`
+[Boundary Constraints]
+1. The "start" and "end" anchors must be verbatim copies from the original text. Do not rewrite, summarize, or abbreviate.
+2. Allow punctuation/whitespace differences, but key entities and events must match the original exactly.
+3. If anchors cannot be located reliably, return [] directly.`
 
 export async function handleClipsBuildTask(job: Job<TaskJobData>) {
   const payload = (job.data.payload || {}) as Record<string, unknown>

@@ -13,12 +13,12 @@ export function parseBedrockCredentials(apiKey: string): BedrockCredentials {
     parsed = JSON.parse(apiKey)
   } catch {
     throw new Error(
-      'BEDROCK_CREDENTIALS_INVALID: API Key 必须是 JSON 格式，包含 accessKeyId、secretAccessKey、region',
+      'BEDROCK_CREDENTIALS_INVALID: API Key must be JSON containing accessKeyId, secretAccessKey, region',
     )
   }
   if (!parsed || typeof parsed !== 'object') {
     throw new Error(
-      'BEDROCK_CREDENTIALS_INVALID: API Key 必须是 JSON 对象',
+      'BEDROCK_CREDENTIALS_INVALID: API Key must be a JSON object',
     )
   }
   const record = parsed as Record<string, unknown>
@@ -27,7 +27,7 @@ export function parseBedrockCredentials(apiKey: string): BedrockCredentials {
   const region = typeof record.region === 'string' ? record.region.trim() : ''
   if (!accessKeyId || !secretAccessKey || !region) {
     throw new Error(
-      'BEDROCK_CREDENTIALS_INVALID: JSON 必须包含非空的 accessKeyId、secretAccessKey、region',
+      'BEDROCK_CREDENTIALS_INVALID: JSON must contain non-empty accessKeyId, secretAccessKey, region',
     )
   }
   return { accessKeyId, secretAccessKey, region }

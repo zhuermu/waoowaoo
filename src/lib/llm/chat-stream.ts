@@ -443,7 +443,7 @@ export async function chatCompletionStream(
           },
         })
         throw new Error(
-          `LLM_EMPTY_RESPONSE: bedrock::${resolvedModelId} 返回空内容` +
+          `LLM_EMPTY_RESPONSE: bedrock::${resolvedModelId} returned empty content` +
           ` [chunks: ${JSON.stringify(chunkTypeCounts)}]` +
           (streamErrors.length > 0 ? ` [errors: ${JSON.stringify(streamErrors[0])}]` : ''),
         )
